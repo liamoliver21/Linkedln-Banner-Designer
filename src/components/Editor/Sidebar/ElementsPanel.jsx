@@ -25,8 +25,29 @@ const ElementsPanel = ({ onAddBadge, onAddElement }) => {
             <div>
                 <h3 className="font-bold text-slate-800 mb-3 text-sm">Shapes & Lines</h3>
                 <div className="grid grid-cols-4 gap-2">
-                    <CategoryButton onClick={() => onAddElement({ type: 'rect', width: 100, height: 100, fill: '#64748b' })} icon={Square} label="Square" />
+                    <CategoryButton
+                        onClick={() => onAddElement({
+                            type: 'polygon',
+                            points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }],
+                            fill: '#64748b',
+                            stroke: '#475569',
+                            strokeWidth: 2
+                        })}
+                        icon={Square}
+                        label="Square"
+                    />
                     <CategoryButton onClick={() => onAddElement({ type: 'circle', width: 100, height: 100, fill: '#64748b' })} icon={Circle} label="Circle" />
+                    <CategoryButton
+                        onClick={() => onAddElement({
+                            type: 'polygon',
+                            points: [{ x: 50, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }],
+                            fill: '#64748b',
+                            stroke: '#475569',
+                            strokeWidth: 2
+                        })}
+                        icon={Triangle}
+                        label="Triangle"
+                    />
                     <CategoryButton onClick={() => onAddElement({ type: 'line', width: 200, stroke: '#64748b', strokeWidth: 4 })} icon={Minus} label="Line" />
                 </div>
             </div>
