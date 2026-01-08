@@ -36,7 +36,7 @@ const BannerCanvas = ({
     // Drag State
     const [draggingItem, setDraggingItem] = useState(null); // { type: 'badge' | 'face' | 'element', id: string | null }
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-    const [faceRect, setFaceRect] = useState(null); // { x, y, w, h }
+    // { x, y, w, h }
 
     // Constants
     const WIDTH = 1584;
@@ -66,11 +66,26 @@ const BannerCanvas = ({
         };
     }, [imageUrl]);
 
+    // Helper refs to avoid dependency loops if inside effect
+    const drawTemplateRef = useRef(null);
+    const drawTextRef = useRef(null);
+
+    // Update refs with current functions
+    useEffect(() => {
+        drawTemplateRef.current = drawTemplate;
+        drawTextRef.current = drawText;
+    }); // Always update
+
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
 
         const ctx = canvas.getContext('2d');
+
+        // ... (rest of drawing logic)
+
+        // Use refs or local functions inside
+
 
         // Clear canvas
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -114,12 +129,13 @@ const BannerCanvas = ({
 
         const drawTemplateData = () => {
             if (template && profession) {
-                drawTemplate(ctx, template, colors);
+                // Call the hoisted/ref function
+                drawTemplateRef.current(ctx, template, colors);
             }
         };
 
         const drawTextData = () => {
-            drawText(ctx, profession, customText, template);
+            drawTextRef.current(ctx, profession, customText, template);
         };
 
         const drawLogoAndText = () => {
@@ -300,7 +316,7 @@ const BannerCanvas = ({
 
         drawContent();
 
-    }, [profession, template, customText, loadedImage, overlayOpacity, customPalette, customLogo, badges, faceConfig, elements, selectedElementId]);
+    }, [profession, template, customText, loadedImage, overlayOpacity, customPalette, customLogo, badges, faceConfig, elements, selectedElementId, colors]);
 
     // Use ref for rect to avoid re-render loops
     const faceRectRef = useRef(null);
@@ -470,12 +486,9 @@ const BannerCanvas = ({
         setDraggingItem(null);
     };
 
-    // Helper functions (pure or with args)
+    // Helper functions (Moved up for scope access)
     const drawTemplate = (ctx, template, palette) => {
         // Based on src/data/templates.js
-        /* 
-           styles: 'modern', 'clean', 'minimal', 'grid', 'bold'
-        */
         if (template.style === 'modern') {
             ctx.fillStyle = palette[0];
             ctx.globalAlpha = 0.9;
@@ -490,27 +503,22 @@ const BannerCanvas = ({
             ctx.fillStyle = palette[0];
             ctx.fillRect(0, HEIGHT * 0.75, WIDTH, HEIGHT * 0.25);
         } else if (template.style === 'clean') {
-            // Personal Brand: Soft side gradient
             const gradient = ctx.createLinearGradient(0, 0, WIDTH * 0.5, 0);
-            gradient.addColorStop(0, palette[0]); // Primary
+            gradient.addColorStop(0, palette[0]);
             gradient.addColorStop(1, "transparent");
             ctx.fillStyle = gradient;
             ctx.globalAlpha = 0.8;
             ctx.fillRect(0, 0, WIDTH, HEIGHT);
             ctx.globalAlpha = 1.0;
         } else if (template.style === 'minimal') {
-            // Minimalist: Clean, just a subtle accent
             ctx.fillStyle = palette[0];
-            ctx.fillRect(WIDTH - 20, 0, 20, HEIGHT); // Right border
+            ctx.fillRect(WIDTH - 20, 0, 20, HEIGHT);
         } else if (template.style === 'grid') {
-            // Grid: Panels simulation
             ctx.fillStyle = palette[1];
             ctx.globalAlpha = 0.2;
             ctx.fillRect(WIDTH / 3, 0, 2, HEIGHT);
             ctx.fillRect(2 * WIDTH / 3, 0, 2, HEIGHT);
             ctx.globalAlpha = 1.0;
-
-            // Bottom bar
             ctx.fillStyle = palette[0];
             ctx.globalAlpha = 0.9;
             ctx.fillRect(0, HEIGHT - 80, WIDTH, 80);
@@ -520,7 +528,6 @@ const BannerCanvas = ({
 
     const drawText = (ctx, profession, customText, template) => {
         const layout = template?.layout || { textPosition: 'left' };
-
         let x = 50;
         let align = 'left';
         let yoffset = 0;
@@ -528,7 +535,6 @@ const BannerCanvas = ({
         if (layout.textPosition === 'center' || layout.textPosition === 'center-big') {
             x = WIDTH / 2;
             align = 'center';
-            // If centered, maybe move up a bit if clean style
             if (template.style === 'clean') yoffset = -20;
         } else if (layout.textPosition === 'right') {
             x = WIDTH - 50;
@@ -536,18 +542,14 @@ const BannerCanvas = ({
         } else if (layout.textPosition === 'overlay-bottom') {
             x = WIDTH / 2;
             align = 'center';
-            yoffset = HEIGHT / 2 - 40; // Push down
+            yoffset = HEIGHT / 2 - 40;
         }
 
         ctx.textAlign = align;
         ctx.textBaseline = 'middle';
-
-        // Title
         ctx.fillStyle = customText?.color || '#ffffff';
-        // Bold style has bigger font
         const fontSize = template.style === 'bold' ? 100 : 64;
         ctx.font = `bold ${fontSize}px "${customText?.font || 'Inter'}", sans-serif`;
-
         ctx.shadowColor = "rgba(0,0,0,0.5)";
         ctx.shadowBlur = 4;
 
@@ -555,14 +557,11 @@ const BannerCanvas = ({
         ctx.fillText(titleText, x, 140 + yoffset);
 
         ctx.shadowBlur = 0;
-
-        // Tagline
         ctx.fillStyle = '#f0f0f0';
         ctx.font = `32px "${customText?.font || 'Inter'}", sans-serif`;
         const taglineText = customText?.tagline || profession?.defaultTagline || 'Your Tagline Here';
         ctx.fillText(taglineText, x, 210 + yoffset);
 
-        // Simple CTA/Details if not clean/minimal
         if (template.style !== 'minimal') {
             ctx.font = `20px "${customText?.font || 'Inter'}", sans-serif`;
             ctx.fillStyle = '#cbd5e1';

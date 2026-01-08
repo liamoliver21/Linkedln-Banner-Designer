@@ -23,7 +23,7 @@ export const getHistory = () => {
     try {
         const data = localStorage.getItem(HISTORY_KEY);
         return data ? JSON.parse(data) : [];
-    } catch (e) {
+    } catch {
         return [];
     }
 };

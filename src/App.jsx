@@ -1,21 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import ProfessionSelector from './components/ProfessionSelector';
-import BannerCanvas from './components/BannerCanvas';
-import TextEditor from './components/TextEditor';
-import BackgroundEditor from './components/BackgroundEditor';
+import BannerCanvas from './components/Features/Banner/BannerCanvas';
+
 import LandingPage from './components/LandingPage';
-import DesignCritique from './components/DesignCritique';
-import ColorPaletteGen from './components/ColorPaletteGen';
-import BrandKitManager from './components/BrandKitManager';
-import ProfileAnalyzer from './components/ProfileAnalyzer'; // New Import
-import IndustryTips from './components/IndustryTips'; // New Import
-import BadgeSelector from './components/BadgeSelector'; // New Import
-import OnboardingTour from './components/OnboardingTour'; // New Import
-import InspirationGallery from './components/InspirationGallery';
-import ExportPanel from './components/ExportPanel'; // New Import
+import DesignCritique from './components/Features/Analysis/DesignCritique';
+
+import ProfileAnalyzer from './components/Features/Analysis/ProfileAnalyzer'; // New Import
+
 import EditorLayout from './components/Editor/EditorLayout'; // New Import
-import AuthModal from './components/AuthModal';
-import FaceUploader from './components/FaceUploader';
+import AuthModal from './components/Common/AuthModal';
+
 import { supabase } from './utils/supabaseClient';
 import { templates } from './data/templates';
 import { generateTaglines } from './utils/taglineGenerator';
@@ -23,15 +17,16 @@ import { searchImages } from './utils/imageService';
 import { downloadBannerAsJPEG, downloadBannerAsPDF } from './utils/exportService';
 import { saveToHistory, getHistory } from './utils/historyService';
 import { analyzeDesignWithGemini } from './utils/geminiService';
-import { History, ArrowLeft, Sparkles, User, LogOut } from 'lucide-react';
+import { History, ArrowLeft, User, LogOut } from 'lucide-react';
 
 function App() {
   const [view, setView] = useState('landing');
   const [selectedProfession, setSelectedProfession] = useState(null);
   const [activeTemplate, setActiveTemplate] = useState(templates[0]);
   const [taglines, setTaglines] = useState([]);
-  const [images, setImages] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  // const [images, setImages] = useState([]); // Unused
+  // const [isLoading, setIsLoading] = useState(false); // Unused in final view
+
 
   // Auth State
   const [user, setUser] = useState(null);
@@ -156,15 +151,6 @@ function App() {
     setView('generator');
   };
 
-  const handleTextUpdate = (newConfig) => {
-    setTextConfig(newConfig);
-  };
-
-  const handleRegenerateBg = async () => {
-    const fetchedImages = await searchImages(selectedProfession.keywords[Math.floor(Math.random() * selectedProfession.keywords.length)]);
-    setBgImage(fetchedImages[Math.floor(Math.random() * fetchedImages.length)]?.url);
-  };
-
   const handleDownload = (type) => {
     const filename = `LinkedIn_Banner_${selectedProfession.label.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`;
     if (type === 'pdf') {
@@ -190,33 +176,7 @@ function App() {
     }
   };
 
-  const handleApplyPalette = (colors) => {
-    setCustomPalette(colors);
-  };
 
-  const handleApplyBrandKit = (kit) => {
-    if (kit.colors && kit.colors.length > 0) setCustomPalette(kit.colors);
-    if (kit.logo) setCustomLogo(kit.logo);
-    if (kit.font) setTextConfig(prev => ({ ...prev, font: kit.font }));
-  };
-
-  const handleAddBadge = (type) => {
-    // Add random small offset to avoid stacking perfectly
-    setBadges(prev => [...prev, {
-      id: Date.now(),
-      type,
-      x: 1400 - (Math.random() * 50), // Default to right side
-      y: 50 + (Math.random() * 50)
-    }]);
-  };
-
-  const handleUpdateBadgePos = (id, x, y) => {
-    setBadges(prev => prev.map(b => b.id === id ? { ...b, x, y } : b));
-  };
-
-  const handleFaceUpdate = (newConfig) => {
-    setFaceConfig(newConfig);
-  };
 
 
 

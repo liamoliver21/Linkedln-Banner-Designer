@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { Image as ImageIcon, Upload, RefreshCw, Layers } from 'lucide-react';
 
 const BackgroundEditor = ({
-    currentImage,
+
     onImageChange,
     onOpacityChange,
     opacity,

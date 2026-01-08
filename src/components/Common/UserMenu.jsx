@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../utils/supabaseClient';
+import { supabase } from '../../utils/supabaseClient';
 import { User, LogOut, ChevronDown } from 'lucide-react';
 
 const UserMenu = ({ session, onOpenAuth }) => {

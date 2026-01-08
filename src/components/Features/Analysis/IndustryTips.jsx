@@ -1,16 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Lightbulb, RefreshCw } from 'lucide-react';
-import { getIndustryTips } from '../utils/geminiService';
+import { getIndustryTips } from '../../../utils/geminiService';
 
 const IndustryTips = ({ profession }) => {
     const [tips, setTips] = useState([]);
     const [loading, setLoading] = useState(false);
-
-    useEffect(() => {
-        if (profession) {
-            fetchTips();
-        }
-    }, [profession]);
 
     const fetchTips = async () => {
         setLoading(true);
@@ -18,6 +12,12 @@ const IndustryTips = ({ profession }) => {
         setTips(data || []);
         setLoading(false);
     };
+
+    useEffect(() => {
+        if (profession) {
+            fetchTips();
+        }
+    }, [profession]);
 
     if (!profession) return null;
 

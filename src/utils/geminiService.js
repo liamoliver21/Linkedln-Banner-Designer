@@ -51,8 +51,11 @@ const rateLimiter = new GeminiRateLimiter();
 
 /**
  * Generic Fetch Wrapper for Gemini API
+ * @param {string} prompt - The text prompt
+ * @param {string} [model='gemini-pro'] - The model to use
+ * @returns {Promise<any>} - The API response data
  */
-const fetchGemini = async (prompt, model = 'gemini-pro') => {
+const fetchGemini = async (prompt) => {
     const url = `${API_URL}?key=${GEMINI_API_KEY}`;
 
     const response = await fetch(url, {
@@ -139,6 +142,9 @@ export const suggestColorsWithGemini = async (profession, mood) => {
 
 /**
  * Generic Fetch Wrapper for Gemini VISION API
+ * @param {string} prompt - The text prompt
+ * @param {string} base64Image - Base64 encoded image string
+ * @returns {Promise<any>} - The API response data
  */
 const fetchGeminiVision = async (prompt, base64Image) => {
     const url = `${VISION_API_URL}?key=${GEMINI_API_KEY}`;

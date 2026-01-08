@@ -34,6 +34,12 @@ export const searchImages = async (query) => {
     ];
 };
 
+/**
+ * Generates an AI image (Mock Implementation)
+ * Simulates a call to "Nano Banana API" by returning curated Unsplash images based on keywords.
+ * @param {string} prompt - The image generation prompt
+ * @returns {Promise<string>} - URL of the generated (selected) image
+ */
 export const generateAIImage = async (prompt) => {
     // Consuming Nano Banana API for AI Image Generation
     console.log(`Generating image with Nano Banana Key: ${NANO_BANANA_API_KEY.substring(0, 4)}...`);

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../utils/supabaseClient';
+import { supabase } from '../../utils/supabaseClient';
 import { X, Mail, Lock, Loader2, AlertCircle, BadgeCheck } from 'lucide-react';
 
 const AuthModal = ({ isOpen, onClose }) => {

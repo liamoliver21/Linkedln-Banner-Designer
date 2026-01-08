@@ -3,21 +3,18 @@ import { Briefcase, Upload, Save, Trash2, CheckCircle } from 'lucide-react';
 import { saveBrandKit, getBrandKit, clearBrandKit } from '../utils/storageService';
 
 const BrandKitManager = ({ onApply }) => {
-    const [kit, setKit] = useState({
-        brandName: '',
-        colors: ['#000000', '#ffffff', '#808080'],
-        font: 'Inter',
-        logo: null // base64 string
-    });
-    const [isSaved, setIsSaved] = useState(false);
-
-    useEffect(() => {
+    const [kit, setKit] = useState(() => {
         const saved = getBrandKit();
-        if (saved) {
-            setKit(saved);
-            setIsSaved(true);
-        }
-    }, []);
+        return saved || {
+            brandName: '',
+            colors: ['#000000', '#ffffff', '#808080'],
+            font: 'Inter',
+            logo: null // base64 string
+        };
+    });
+
+    // Check if it matches saved state (simplification: if loaded from storage, it's saved)
+    const [isSaved, setIsSaved] = useState(() => !!getBrandKit());
 
     const handleColorChange = (index, value) => {
         const newColors = [...kit.colors];

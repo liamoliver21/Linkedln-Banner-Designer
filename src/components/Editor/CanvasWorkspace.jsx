@@ -1,6 +1,10 @@
 import React from 'react';
-import BannerCanvas from '../BannerCanvas';
+import BannerCanvas from '../Features/Banner/BannerCanvas';
 
+/**
+ * Workspace area where the banner is rendered.
+ * Handles zooming and passes props down to the actual BannerCanvas.
+ */
 const CanvasWorkspace = (props) => {
     return (
         <div className="flex-1 bg-slate-100 overflow-hidden relative flex items-center justify-center p-8">

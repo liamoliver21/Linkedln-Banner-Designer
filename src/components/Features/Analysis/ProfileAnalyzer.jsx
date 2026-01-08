@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Sparkles, X } from 'lucide-react';
-import { analyzeProfileWithGemini } from '../utils/geminiService';
+import { analyzeProfileWithGemini } from '../../../utils/geminiService';
 
 const ProfileAnalyzer = ({ onAnalysisComplete }) => {
     const [isOpen, setIsOpen] = useState(false);

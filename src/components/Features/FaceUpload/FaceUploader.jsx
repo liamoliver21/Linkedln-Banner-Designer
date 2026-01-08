@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, User, Loader2, RefreshCw, Sliders, AlertCircle, X, Zap } from 'lucide-react';
-import { upscaleImage } from '../utils/geminiUpscaler';
+import { upscaleImage } from '../../../utils/geminiUpscaler';
 
 // Constants
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
