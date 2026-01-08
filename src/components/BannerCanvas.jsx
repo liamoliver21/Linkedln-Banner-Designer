@@ -45,6 +45,27 @@ const BannerCanvas = ({
     // Use custom palette if available, otherwise fall back to profession defaults
     const colors = customPalette || (profession ? profession.colorPalette : ['#4f46e5', '#3b82f6', '#f0f0f0']);
 
+    // Image Loading State
+    const [loadedImage, setLoadedImage] = useState(null);
+
+    // Load Image Effect (Runs only when URL changes)
+    useEffect(() => {
+        if (!imageUrl) {
+            setLoadedImage(null);
+            return;
+        }
+
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = imageUrl;
+        img.onload = () => {
+            setLoadedImage(img);
+        };
+        img.onerror = () => {
+            setLoadedImage(null);
+        };
+    }, [imageUrl]);
+
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -56,41 +77,28 @@ const BannerCanvas = ({
 
         const drawContent = () => {
             // 1. Draw Background
-            if (imageUrl) {
-                const img = new Image();
-                img.crossOrigin = "anonymous";
-                img.src = imageUrl;
-                img.onload = () => {
-                    // Draw image cover style
-                    const scale = Math.max(WIDTH / img.width, HEIGHT / img.height);
-                    const x = (WIDTH / 2) - (img.width / 2) * scale;
-                    const y = (HEIGHT / 2) - (img.height / 2) * scale;
-                    ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+            if (loadedImage) {
+                // Draw pre-loaded image
+                const img = loadedImage;
+                const scale = Math.max(WIDTH / img.width, HEIGHT / img.height);
+                const x = (WIDTH / 2) - (img.width / 2) * scale;
+                const y = (HEIGHT / 2) - (img.height / 2) * scale;
+                ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
 
-                    // Overlay
-                    applyOverlay();
-                    drawTemplateData();
-                    drawLogoAndText();
-                    drawFace();
-                    drawBadges();
-                    drawElements(); // New
-                };
-                img.onerror = () => {
-                    // Fallback if image fails
-                    fillBackground();
-                    drawTemplateData();
-                    drawLogoAndText();
-                    drawFace();
-                    drawBadges();
-                    drawElements(); // New
-                };
+                // Overlay & Content
+                applyOverlay();
+                drawTemplateData();
+                drawLogoAndText();
+                drawFace();
+                drawBadges();
+                drawElements();
             } else {
                 fillBackground();
                 drawTemplateData();
                 drawLogoAndText();
                 drawFace();
                 drawBadges();
-                drawElements(); // New
+                drawElements();
             }
         };
 
@@ -255,6 +263,35 @@ const BannerCanvas = ({
                     ctx.lineTo(el.width || 100, 0);
                     ctx.stroke();
                     if (el.id === selectedElementId) ctx.strokeRect(-5, -5, (el.width || 100) + 10, 10);
+                } else if (el.type === 'polygon' && el.points && el.points.length > 0) {
+                    ctx.fillStyle = el.fill || '#e2e8f0';
+                    ctx.beginPath();
+                    ctx.moveTo(el.points[0].x, el.points[0].y);
+                    for (let i = 1; i < el.points.length; i++) {
+                        ctx.lineTo(el.points[i].x, el.points[i].y);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+
+                    if (el.stroke) {
+                        ctx.strokeStyle = el.stroke;
+                        ctx.lineWidth = el.strokeWidth || 2;
+                        ctx.stroke();
+                    }
+
+                    if (el.selected || el.id === selectedElementId) {
+                        ctx.strokeStyle = '#2563eb';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+
+                        // Draw vertex handles
+                        ctx.fillStyle = '#2563eb';
+                        el.points.forEach(p => {
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+                            ctx.fill();
+                        });
+                    }
                 }
 
                 ctx.restore();
@@ -263,7 +300,7 @@ const BannerCanvas = ({
 
         drawContent();
 
-    }, [profession, template, customText, imageUrl, overlayOpacity, customPalette, customLogo, badges, faceConfig, elements, selectedElementId]);
+    }, [profession, template, customText, loadedImage, overlayOpacity, customPalette, customLogo, badges, faceConfig, elements, selectedElementId]);
 
     // Use ref for rect to avoid re-render loops
     const faceRectRef = useRef(null);
@@ -299,6 +336,40 @@ const BannerCanvas = ({
                 if (pos.x >= el.x && pos.x <= el.x + 100 && pos.y >= el.y && pos.y <= el.y + 100) hit = true;
             }
 
+            // Polygon Hit Test (Vertex & Body)
+            if (el.type === 'polygon' && (el.selected || el.id === selectedElementId)) {
+                // 1. Check Vertex Click
+                for (let j = 0; j < el.points.length; j++) {
+                    const p = el.points[j];
+                    const dist = Math.sqrt(Math.pow(pos.x - (el.x + p.x), 2) + Math.pow(pos.y - (el.y + p.y), 2));
+                    if (dist < 10) { // Hit radius for vertex
+                        setDraggingItem({ type: 'vertex', id: el.id, pointIndex: j });
+                        setDragOffset({ x: 0, y: 0 }); // offset not needed for vertex direct set
+                        if (onSelectElement) onSelectElement(el.id);
+                        clickedAny = true;
+                        return;
+                    }
+                }
+            }
+
+            if (el.type === 'polygon') {
+                // Ray casting for polygon body hit test
+                // const polyPoints = el.points.map(p => ({ x: el.x + p.x, y: el.y + p.y }));
+                // Simplified: Bounding box for now, actual raycast is expensive in loop if many points
+                // Better: Check bounding box first
+                const minX = Math.min(...el.points.map(p => p.x)) + el.x;
+                const maxX = Math.max(...el.points.map(p => p.x)) + el.x;
+                const minY = Math.min(...el.points.map(p => p.y)) + el.y;
+                const maxY = Math.max(...el.points.map(p => p.y)) + el.y;
+
+                if (pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY) {
+                    // Refined check: ray casting could go here if needed
+                    hit = true;
+                } else {
+                    hit = false;
+                }
+            }
+
             if (hit) {
                 setDraggingItem({ type: 'element', id: el.id });
                 setDragOffset({ x: pos.x - el.x, y: pos.y - el.y });
@@ -308,7 +379,10 @@ const BannerCanvas = ({
             }
         }
 
-        if (!clickedAny && onSelectElement) onSelectElement(null);
+        if (clickedAny) return;
+
+        // If we didn't click an element, check other items BEFORE deselecting
+        let clickedOther = false;
 
 
         // 1. Check Badges collision (reverse order)
@@ -318,18 +392,24 @@ const BannerCanvas = ({
             if (dist < 30) {
                 setDraggingItem({ type: 'badge', id: b.id });
                 setDragOffset({ x: pos.x - b.x, y: pos.y - b.y });
+                clickedOther = true;
                 return;
             }
         }
 
-        // 2. Check Face Collision
         if (faceRectRef.current) {
             const { x, y, w, h } = faceRectRef.current;
             if (pos.x >= x && pos.x <= x + w && pos.y >= y && pos.y <= y + h) {
                 setDraggingItem({ type: 'face' });
                 setDragOffset({ x: pos.x - x, y: pos.y - y });
+                clickedOther = true;
                 return;
             }
+        }
+
+        // Only deselect if we haven't clicked *any* interactive item
+        if (!clickedAny && !clickedOther && onSelectElement) {
+            onSelectElement(null);
         }
     };
 
@@ -367,6 +447,22 @@ const BannerCanvas = ({
             onUpdateFaceConfig({ ...faceConfig, x: pos.x - dragOffset.x, y: pos.y - dragOffset.y });
         } else if (draggingItem.type === 'element' && onUpdateElement) {
             onUpdateElement(draggingItem.id, { x: pos.x - dragOffset.x, y: pos.y - dragOffset.y });
+        } else if (draggingItem.type === 'vertex' && onUpdateElement) {
+            // Find element
+            const el = elements.find(e => e.id === draggingItem.id);
+            if (el) {
+                // Update specific point
+                // Local coordinate = (MousePos - ElementPos) - Rotation... NO rotation support for vertex editing yet simplicity
+                // We need to update the point in the existing array
+                const newPoints = [...el.points];
+                const pIndex = draggingItem.pointIndex;
+                // Calculate local relative to shape origin
+                newPoints[pIndex] = {
+                    x: pos.x - el.x,
+                    y: pos.y - el.y
+                };
+                onUpdateElement(draggingItem.id, { points: newPoints });
+            }
         }
     };
 
