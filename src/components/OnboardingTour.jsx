@@ -36,17 +36,16 @@ const TOUR_STEPS = [
 
 const OnboardingTour = ({ onComplete }) => {
     const [stepIndex, setStepIndex] = useState(0);
-    // Lazy initialization from localStorage
-    const [isVisible, setIsVisible] = useState(() => {
-        return !localStorage.getItem('bannergen_tour_seen');
-    });
+    const [isVisible, setIsVisible] = useState(true);
 
     useEffect(() => {
-        // If hidden on mount (because already seen), notify parent
-        if (!isVisible && onComplete) {
-            onComplete();
+        // Check if already seen
+        const seen = localStorage.getItem('bannergen_tour_seen');
+        if (seen) {
+            setIsVisible(false);
+            if (onComplete) onComplete();
         }
-    }, [isVisible, onComplete]);
+    }, [onComplete]);
 
     const handleNext = () => {
         if (stepIndex < TOUR_STEPS.length - 1) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import LeftSidebar from './LeftSidebar';
 import TopToolbar from './TopToolbar';
 import RightPanel from './RightPanel';
@@ -11,6 +11,7 @@ import ElementsPanel from './Sidebar/ElementsPanel';
 import TextPanel from './Sidebar/TextPanel';
 import BrandPanel from './Sidebar/BrandPanel';
 import UploadsPanel from './Sidebar/UploadsPanel';
+import LayersPanel from './Sidebar/LayersPanel';
 
 import { templates } from '../../data/templates';
 
@@ -34,34 +35,61 @@ const EditorLayout = ({
     setFaceConfig,
     onBack,
     onDownload,
-    onDownload,
-    taglines
+    handleCritique,
+    taglines,
+    onApplyKit
 }) => {
     const [activeTab, setActiveTab] = useState('design');
-    const [fileName, setFileName] = useState('My Untitled Design');
+    const [fileName, setFileName] = useState('My Untitled LinkedIn banner');
     const [zoom, setZoom] = useState(67);
 
     // New Generic Elements State (Text, Shapes, etc.)
-    /**
-     * @typedef {Object} CanvasElement
-     * @property {string} id - Unique identifier
-     * @property {number} x - X position
-     * @property {number} y - Y position
-     * @property {number} rotation - Rotation in degrees
-     * @property {number} scale - Scale factor
-     * @property {number} zIndex - Layer index
-     * @property {string} [type] - specific type if needed
-     */
-
-    /** @type {[CanvasElement[], Function]} */
     const [elements, setElements] = useState([]);
-    const [selectedElementId, setSelectedElementId] = useState(null);
+    const [selectedElementIds, setSelectedElementIds] = useState([]);
 
-    // Helpers (Declared before Effects/usage)
-    /**
-     * Adds a new element to the canvas
-     * @param {Partial<CanvasElement>} element - The element data to add
-     */
+    // Grid System State
+    const [showGrid, setShowGrid] = useState(false);
+    const [snapToGrid, setSnapToGrid] = useState(false);
+
+    // Delete Key Listener
+    React.useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElementIds.length > 0) {
+                // Prevent deletion if user is typing in an input/textarea
+                const tagName = document.activeElement?.tagName?.toLowerCase();
+                if (tagName === 'input' || tagName === 'textarea' || document.activeElement?.isContentEditable) {
+                    return;
+                }
+
+                handleDeleteSelectedElements();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedElementIds]);
+
+    // Selection Helpers
+    const handleSelectElement = (id, shiftKey = false) => {
+        if (id === null) {
+            setSelectedElementIds([]);
+            return;
+        }
+
+        if (shiftKey) {
+            // Toggle selection
+            setSelectedElementIds(prev =>
+                prev.includes(id)
+                    ? prev.filter(eid => eid !== id)
+                    : [...prev, id]
+            );
+        } else {
+            // Replace selection
+            setSelectedElementIds([id]);
+        }
+    };
+
+    // Element Helpers
     const handleAddElement = (element) => {
         const newElement = {
             id: Date.now().toString(),
@@ -73,58 +101,146 @@ const EditorLayout = ({
             ...element
         };
         setElements(prev => [...prev, newElement]);
-        setSelectedElementId(newElement.id);
+        setSelectedElementIds([newElement.id]);
     };
 
-    /**
-     * Updates an existing element by ID
-     * @param {string} id - Element ID
-     * @param {Partial<CanvasElement>} updates - Fields to update
-     */
     const handleUpdateElement = (id, updates) => {
         setElements(prev => prev.map(el => el.id === id ? { ...el, ...updates } : el));
     };
 
-    /**
-     * Deletes an element by ID
-     * @param {string} id - Element ID
-     */
     const handleDeleteElement = (id) => {
         setElements(prev => prev.filter(el => el.id !== id));
-        if (selectedElementId === id) setSelectedElementId(null);
+        setSelectedElementIds(prev => prev.filter(eid => eid !== id));
     };
 
-    // Keyboard Event Listener for Deletion
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElementId) {
-                // Avoid deleting if user is typing in an input
-                const tag = document.activeElement.tagName.toLowerCase();
-                if (tag === 'input' || tag === 'textarea') return;
+    const handleDeleteSelectedElements = () => {
+        setElements(prev => prev.filter(el => !selectedElementIds.includes(el.id)));
+        setSelectedElementIds([]);
+    };
 
-                handleDeleteElement(selectedElementId);
-            }
+    // Grouping Helpers
+    const handleGroupElements = () => {
+        if (selectedElementIds.length < 2) return;
+
+        // Get selected elements (full copies)
+        const selectedEls = elements.filter(el => selectedElementIds.includes(el.id));
+
+        // Calculate bounding box
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        selectedEls.forEach(el => {
+            const w = el.width || 100;
+            const h = el.height || 100;
+            minX = Math.min(minX, el.x);
+            minY = Math.min(minY, el.y);
+            maxX = Math.max(maxX, el.x + w);
+            maxY = Math.max(maxY, el.y + h);
+        });
+
+        // Create group element with full copies of children
+        const groupId = `group-${Date.now()}`;
+        const group = {
+            id: groupId,
+            type: 'group',
+            name: `Group ${elements.filter(el => el.type === 'group').length + 1}`,
+            x: minX,
+            y: minY,
+            width: maxX - minX,
+            height: maxY - minY,
+            rotation: 0,
+            scale: 1,
+            // Store full element copies with relative positions for ungrouping
+            childElements: selectedEls.map(el => ({
+                ...el,
+                relX: el.x - minX,
+                relY: el.y - minY
+            }))
         };
 
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedElementId]); // handleDeleteElement is stable as strict const, but technically a dep if not memoized. 
-    // Since it's defined in render, it changes every render. Ideally use useCallback, but moving it up fixes the crash.
+        // Remove selected elements and add group
+        setElements(prev => [
+            ...prev.filter(el => !selectedElementIds.includes(el.id)),
+            group
+        ]);
+        setSelectedElementIds([groupId]);
+    };
+
+    const handleUngroupElements = () => {
+        if (selectedElementIds.length !== 1) return;
+
+        const groupId = selectedElementIds[0];
+        const group = elements.find(el => el.id === groupId);
+
+        if (!group || group.type !== 'group' || !group.childElements) return;
+
+        // Restore children with their absolute positions (group position + relative position)
+        const restoredChildren = group.childElements.map(child => ({
+            ...child,
+            x: group.x + child.relX,
+            y: group.y + child.relY,
+            relX: undefined,
+            relY: undefined
+        }));
+
+        // Remove group and add restored children
+        setElements(prev => [
+            ...prev.filter(el => el.id !== groupId),
+            ...restoredChildren
+        ]);
+        setSelectedElementIds(restoredChildren.map(el => el.id));
+    };
+
+    // Layer ordering functions
+    const handleBringToFront = (id) => {
+        setElements(prev => {
+            const index = prev.findIndex(el => el.id === id);
+            if (index === -1 || index === prev.length - 1) return prev;
+            const newElements = [...prev];
+            const [element] = newElements.splice(index, 1);
+            newElements.push(element);
+            return newElements;
+        });
+    };
+
+    const handleSendToBack = (id) => {
+        setElements(prev => {
+            const index = prev.findIndex(el => el.id === id);
+            if (index === -1 || index === 0) return prev;
+            const newElements = [...prev];
+            const [element] = newElements.splice(index, 1);
+            newElements.unshift(element);
+            return newElements;
+        });
+    };
+
+    const handleMoveForward = (id) => {
+        setElements(prev => {
+            const index = prev.findIndex(el => el.id === id);
+            if (index === -1 || index === prev.length - 1) return prev;
+            const newElements = [...prev];
+            [newElements[index], newElements[index + 1]] = [newElements[index + 1], newElements[index]];
+            return newElements;
+        });
+    };
+
+    const handleMoveBackward = (id) => {
+        setElements(prev => {
+            const index = prev.findIndex(el => el.id === id);
+            if (index === -1 || index === 0) return prev;
+            const newElements = [...prev];
+            [newElements[index], newElements[index - 1]] = [newElements[index - 1], newElements[index]];
+            return newElements;
+        });
+    };
 
     const handleUpdateBadgePos = (id, x, y) => {
         setBadges(prev => prev.map(b => b.id === id ? { ...b, x, y } : b));
     };
 
-    const handleAddBadge = (type) => {
-        setBadges(prev => [...prev, {
-            id: Date.now(),
-            type,
-            x: 1400 - (Math.random() * 50),
-            y: 50 + (Math.random() * 50)
-        }]);
+
+
+    const handleRegenerateBg = () => {
+        // ... existing logic placeholder
     };
-
-
 
     const renderSidebarContent = () => {
         switch (activeTab) {
@@ -141,8 +257,19 @@ const EditorLayout = ({
             case 'elements':
                 return (
                     <ElementsPanel
-                        onAddBadge={handleAddBadge}
                         onAddElement={handleAddElement}
+                    />
+                );
+            case 'layers':
+                return (
+                    <LayersPanel
+                        elements={elements}
+                        setElements={setElements}
+                        selectedElementIds={selectedElementIds}
+                        onSelectElement={handleSelectElement}
+                        onGroupElements={handleGroupElements}
+                        onUngroupElements={handleUngroupElements}
+                        onDeleteSelected={handleDeleteSelectedElements}
                     />
                 );
             case 'text':
@@ -157,11 +284,7 @@ const EditorLayout = ({
             case 'brand':
                 return (
                     <BrandPanel
-                        onApplyBrandKit={(kit) => {
-                            if (kit.colors && kit.colors.length > 0) setCustomPalette(kit.colors);
-                            if (kit.logo) setCustomLogo(kit.logo);
-                            if (kit.font) setTextConfig(prev => ({ ...prev, font: kit.font }));
-                        }}
+                        onApplyBrandKit={onApplyKit}
                     />
                 );
             case 'uploads':
@@ -212,17 +335,35 @@ const EditorLayout = ({
 
                         // New Props
                         elements={elements}
-                        selectedElementId={selectedElementId}
-                        onSelectElement={setSelectedElementId}
+                        selectedElementIds={selectedElementIds}
+                        onSelectElement={handleSelectElement}
                         onUpdateElement={handleUpdateElement}
+
+                        // Grid Props
+                        showGrid={showGrid}
+                        snapToGrid={snapToGrid}
                     />
-                    <BottomToolbar zoom={zoom} setZoom={setZoom} />
+                    <BottomToolbar
+                        zoom={zoom}
+                        setZoom={setZoom}
+                        showGrid={showGrid}
+                        setShowGrid={setShowGrid}
+                        snapToGrid={snapToGrid}
+                        setSnapToGrid={setSnapToGrid}
+                    />
                 </main>
 
                 <RightPanel
-                    selectedElement={elements.find(el => el.id === selectedElementId)}
-                    onUpdateElement={(updates) => handleUpdateElement(selectedElementId, updates)}
-                    onDeleteElement={() => handleDeleteElement(selectedElementId)}
+                    selectedElement={selectedElementIds.length === 1 ? elements.find(el => el.id === selectedElementIds[0]) : null}
+                    selectedCount={selectedElementIds.length}
+                    onUpdateElement={(updates) => selectedElementIds.length === 1 && handleUpdateElement(selectedElementIds[0], updates)}
+                    onDeleteElement={handleDeleteSelectedElements}
+                    onBringToFront={() => selectedElementIds.length === 1 && handleBringToFront(selectedElementIds[0])}
+                    onSendToBack={() => selectedElementIds.length === 1 && handleSendToBack(selectedElementIds[0])}
+                    onMoveForward={() => selectedElementIds.length === 1 && handleMoveForward(selectedElementIds[0])}
+                    onMoveBackward={() => selectedElementIds.length === 1 && handleMoveBackward(selectedElementIds[0])}
+                    onGroupElements={handleGroupElements}
+                    onUngroupElements={handleUngroupElements}
                 />
             </div>
         </div>

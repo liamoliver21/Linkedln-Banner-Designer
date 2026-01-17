@@ -1,6 +1,6 @@
 import React from 'react';
-import FaceUploader from '../../Features/FaceUpload/FaceUploader';
-import BackgroundEditor from '../../Features/Banner/BackgroundEditor';
+import FaceUploader from '../../FaceUploader';
+import BackgroundEditor from '../../BackgroundEditor';
 
 const UploadsPanel = ({ faceConfig, setFaceConfig, bgImage, setBgImage, overlayOpacity, setOverlayOpacity, selectedProfession }) => {
     return (

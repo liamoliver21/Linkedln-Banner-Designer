@@ -1,7 +1,7 @@
 import React from 'react';
-import { motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
+import { motion } from 'framer-motion';
 import { ArrowRight, Star, Sparkles, Layout } from 'lucide-react';
-
+import { professions } from '../data/professions';
 
 const LandingPage = ({ onStart }) => {
     return (
